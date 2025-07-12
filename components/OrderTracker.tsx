@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Package, CheckCircle, Clock, Truck, ShieldCheck, CreditCard, User, DollarSign, Calendar } from 'lucide-react';
+import { Package, CheckCircle, Clock, Truck, ShieldCheck, CreditCard, User, Calendar } from 'lucide-react';
 import { formatEther } from 'ethers';
 
 interface DeliveryEvent {
@@ -32,25 +32,51 @@ interface Order {
   listingId: bigint;
 }
 
+interface Company {
+  id: bigint;
+  name: string;
+  companyAddress: string;
+  exists: boolean;
+}
+
+interface Product {
+  id: bigint;
+  name: string;
+  description: string;
+  imageHash: string;
+  parentHistory: string[];
+  quantity: bigint;
+  pricePerUnit: bigint;
+  currentOwner: string;
+  createdTime: bigint;
+  exists: boolean;
+}
+
 interface OrderTrackerProps {
   order: Order;
+  product: Product;
+  buyer: Company;
+  seller: Company;
 }
 
 const DELIVERY_STAGES = [
-  { key: 'approved', label: 'Approved', icon: CheckCircle },
-  { key: 'packed', label: 'Packed', icon: Package },
-  { key: 'shipped', label: 'Shipped', icon: Truck },
-  { key: 'delivered', label: 'Delivered', icon: CheckCircle },
-  { key: 'quality_checked', label: 'Quality Checked', icon: ShieldCheck },
-  { key: 'payment_sent', label: 'Payment Sent', icon: CreditCard },
+  { key: 'approved', label: 'Approved', icon: CheckCircle, color: 'from-green-400 to-green-600' },
+  { key: 'packed', label: 'Packed', icon: Package, color: 'from-blue-400 to-blue-600' },
+  { key: 'shipped', label: 'Shipped', icon: Truck, color: 'from-indigo-400 to-indigo-600' },
+  { key: 'delivered', label: 'Delivered', icon: CheckCircle, color: 'from-purple-400 to-purple-600' },
+  { key: 'quality_checked', label: 'Quality Checked', icon: ShieldCheck, color: 'from-pink-400 to-pink-600' },
+  { key: 'payment_sent', label: 'Payment Sent', icon: CreditCard, color: 'from-green-500 to-green-700' },
 ];
 
-export default function OrderTracker({ order }: OrderTrackerProps) {
+export default function OrderTracker({ order, product, buyer, seller }: OrderTrackerProps) {
   const [showDetails, setShowDetails] = useState(false);
 
   const getCurrentStageIndex = () => {
-    const currentStatus = order.status.toLowerCase();
-    return DELIVERY_STAGES.findIndex(stage => stage.key === currentStatus);
+    if (!order.deliveryEvents || order.deliveryEvents.length === 0) {
+      return -1;
+    }
+    const currentEvent = order.deliveryEvents[order.deliveryEvents.length - 1];
+    return DELIVERY_STAGES.findIndex(stage => stage.key === currentEvent.status);
   };
 
   const formatTimestamp = (timestamp: bigint) => {
@@ -73,7 +99,7 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
         </div>
 
         {/* Main Tracking Card */}
-        <div className="bg-white rounded-2xl shadow-xl p-8 space-y-8">
+        <div className="bg-white rounded-2xl shadow-xl p-4 md:p-8 space-y-6 md:space-y-8">
           {/* Progress Bar */}
           <div className="space-y-6">
             <h2 className="text-xl font-semibold text-gray-900 text-center">Delivery Progress</h2>
@@ -100,19 +126,19 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
                     <div key={stage.key} className="flex flex-col items-center space-y-2">
                       <div 
                         className={`
-                          w-16 h-16 rounded-full flex items-center justify-center transition-all duration-500 transform
+                          w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center transition-all duration-500 transform
                           ${isCompleted 
-                            ? 'bg-gradient-to-r from-blue-500 to-green-500 text-white scale-110 shadow-lg' 
+                            ? `bg-gradient-to-r ${stage.color} text-white scale-110 shadow-lg` 
                             : 'bg-gray-200 text-gray-400'
                           }
                           ${isCurrent ? 'animate-pulse ring-4 ring-blue-200' : ''}
                         `}
                       >
-                        <Icon className="w-8 h-8" />
+                        <Icon className="w-6 h-6 md:w-8 md:h-8" />
                       </div>
                       <span 
                         className={`
-                          text-sm font-medium text-center max-w-20
+                          text-xs md:text-sm font-medium text-center max-w-[80px] md:max-w-[100px]
                           ${isCompleted ? 'text-gray-900' : 'text-gray-500'}
                         `}
                       >
@@ -126,26 +152,30 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
           </div>
 
           {/* Current Status */}
-          <div className="text-center space-y-2 bg-blue-50 rounded-xl p-6">
+          <div className="text-center space-y-2 bg-blue-50 rounded-xl p-4 md:p-6">
             <h3 className="text-lg font-semibold text-blue-900">Current Status</h3>
-            <p className="text-2xl font-bold text-blue-600 capitalize">
-              {order.status.replace('_', ' ')}
+            <p className="text-xl md:text-2xl font-bold text-blue-600 capitalize">
+              {order.status.replace(/_/g, ' ')}
             </p>
-            {order.deliveryEvents.length > 0 && (
-              <p className="text-sm text-blue-700">
+            {order.deliveryEvents && order.deliveryEvents.length > 0 && (
+              <p className="text-xs md:text-sm text-blue-700">
                 Last updated: {formatTimestamp(order.deliveryEvents[order.deliveryEvents.length - 1].timestamp)}
               </p>
             )}
           </div>
 
           {/* Order Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Package className="w-5 h-5" />
                 Order Details
               </h3>
               <div className="space-y-3 text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-600">Product Name:</span>
+                  <span className="font-medium text-right">{product.name}</span>
+                </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Product ID:</span>
                   <span className="font-medium">#{order.productId.toString()}</span>
@@ -171,13 +201,19 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
                 Parties
               </h3>
               <div className="space-y-3 text-sm">
-                <div className="flex justify-between">
+                <div className="space-y-1">
                   <span className="text-gray-600">Buyer:</span>
-                  <span className="font-medium font-mono">{formatAddress(order.buyer)}</span>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{buyer.name}</span>
+                    <span className="text-xs text-gray-500 font-mono">{formatAddress(order.buyer)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
+                <div className="space-y-1">
                   <span className="text-gray-600">Seller:</span>
-                  <span className="font-medium font-mono">{formatAddress(order.seller)}</span>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{seller.name}</span>
+                    <span className="text-xs text-gray-500 font-mono">{formatAddress(order.seller)}</span>
+                  </div>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Order Type:</span>
@@ -192,7 +228,7 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
           </div>
 
           {/* Delivery History */}
-          {order.deliveryEvents.length > 0 && (
+          {order.deliveryEvents && order.deliveryEvents.length > 0 && (
             <div className="space-y-4">
               <button
                 onClick={() => setShowDetails(!showDetails)}
@@ -209,17 +245,17 @@ export default function OrderTracker({ order }: OrderTrackerProps) {
                 <div className="space-y-3 bg-gray-50 rounded-xl p-4">
                   {order.deliveryEvents.map((event, index) => (
                     <div key={index} className="bg-white p-4 rounded-lg shadow-sm">
-                      <div className="flex justify-between items-start">
+                      <div className="flex flex-col md:flex-row justify-between items-start gap-2">
                         <div className="space-y-1">
                           <p className="font-medium capitalize text-gray-900">
-                            {event.status.replace('_', ' ')}
+                            {event.status.replace(/_/g, ' ')}
                           </p>
                           <p className="text-sm text-gray-600">{event.description}</p>
                           <p className="text-xs text-gray-500">
                             Updated by: {formatAddress(event.updatedBy)}
                           </p>
                         </div>
-                        <span className="text-sm text-gray-500">
+                        <span className="text-xs md:text-sm text-gray-500 whitespace-nowrap">
                           {formatTimestamp(event.timestamp)}
                         </span>
                       </div>

@@ -6,6 +6,7 @@ import { ethers } from 'ethers';
 import OrderTracker from '@/components/OrderTracker';
 import LoadingState from '@/components/LoadingState';
 import ErrorState from '@/components/ErrorState';
+import { CONTRACT_ABI, CONTRACT_ADDRESS, getProvider } from '@/lib/config';
 
 interface DeliveryEvent {
   timestamp: bigint;
@@ -35,33 +36,56 @@ interface Order {
   listingId: bigint;
 }
 
-const CONTRACT_ADDRESS = "0x1234567890123456789012345678901234567890"; // Replace with your contract address
-const CONTRACT_ABI = [
-  "function getOrder(uint256 _orderId) public view returns (tuple(uint256 id, address buyer, address seller, uint256 productId, uint256 quantity, uint256 unitPrice, uint256 totalPrice, string orderType, string status, uint256 createdAt, uint256 approvalDeadline, uint256 paymentDeadline, string notes, tuple(uint256 timestamp, string status, string description, address updatedBy)[] deliveryEvents, bool exists, bool isPartialTransfer, uint256 originalProductId, uint256 listingId))",
-  "function getOrderDeliveryHistory(uint256 _orderId) public view returns (tuple(uint256 timestamp, string status, string description, address updatedBy)[])",
-];
+interface Product {
+  id: bigint;
+  name: string;
+  description: string;
+  imageHash: string;
+  parentHistory: string[];
+  quantity: bigint;
+  pricePerUnit: bigint;
+  currentOwner: string;
+  createdTime: bigint;
+  exists: boolean;
+}
 
+interface Company {
+  id: bigint;
+  name: string;
+  companyAddress: string;
+  exists: boolean;
+}
+
+// This is a client component
 export default function TrackOrderPage() {
   const params = useParams();
   const orderId = params.orderId as string;
   
   const [order, setOrder] = useState<Order | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [buyer, setBuyer] = useState<Company | null>(null);
+  const [seller, setSeller] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchOrder = async () => {
+    const fetchOrderDetails = async () => {
+      if (!orderId) {
+        setError('Order ID is required');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
         setError(null);
 
-        // Check if MetaMask is available
-        if (typeof window.ethereum === 'undefined') {
-          throw new Error('MetaMask is not installed. Please install MetaMask to track orders.');
+        if (!CONTRACT_ADDRESS) {
+          throw new Error('Contract address is not configured');
         }
 
-        // Connect to Ethereum network
-        const provider = new ethers.BrowserProvider(window.ethereum);
+        // Get the Hardhat provider
+        const provider = await getProvider();
         const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, provider);
 
         // Fetch order details
@@ -72,25 +96,39 @@ export default function TrackOrderPage() {
         }
 
         setOrder(orderData);
+
+        // Fetch product details
+        const productData = await contract.getProduct(orderData.productId);
+        setProduct(productData);
+
+        // Fetch buyer details
+        const buyerData = await contract.getCompany(orderData.buyer);
+        setBuyer(buyerData);
+
+        // Fetch seller details
+        const sellerData = await contract.getCompany(orderData.seller);
+        setSeller(sellerData);
+
       } catch (err: any) {
-        console.error('Error fetching order:', err);
+        console.error('Error fetching order details:', err);
+        
         if (err.message.includes('Order not found')) {
           setError('Order not found. Please check your order ID and try again.');
-        } else if (err.message.includes('MetaMask')) {
-          setError(err.message);
-        } else if (err.message.includes('user rejected')) {
-          setError('Connection was rejected. Please connect your wallet to track orders.');
+        } else if (err.message.includes('Contract address is not configured')) {
+          setError('The application is not properly configured. Please contact support.');
+        } else if (err.message.includes('local Hardhat network')) {
+          setError('Cannot connect to local blockchain. Please make sure Hardhat node is running.');
+        } else if (err.code === 'CALL_EXCEPTION') {
+          setError('Failed to fetch order details. The order might not exist or the contract address might be incorrect.');
         } else {
-          setError('Failed to fetch order details. Please check your network connection and try again.');
+          setError('Failed to fetch order details. Please try again later.');
         }
       } finally {
         setLoading(false);
       }
     };
 
-    if (orderId) {
-      fetchOrder();
-    }
+    fetchOrderDetails();
   }, [orderId]);
 
   if (loading) {
@@ -101,9 +139,9 @@ export default function TrackOrderPage() {
     return <ErrorState error={error} orderId={orderId} />;
   }
 
-  if (!order) {
-    return <ErrorState error="Order not found" orderId={orderId} />;
+  if (!order || !product || !buyer || !seller) {
+    return <ErrorState error="Failed to load complete order information" orderId={orderId} />;
   }
 
-  return <OrderTracker order={order} />;
+  return <OrderTracker order={order} product={product} buyer={buyer} seller={seller} />;
 }
