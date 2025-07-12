@@ -6,7 +6,9 @@ import { ethers } from 'ethers';
 
 // Contract configuration
 const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
-const RPC_URL = "http://localhost:8545";
+
+// VS Code port forwarding URL
+const RPC_URL = "https://0982btxq-8545.inc1.devtunnels.ms/";
 
 // Contract ABI - TrustFlow contract functions
 const CONTRACT_ABI = [
@@ -66,6 +68,9 @@ export default function ProductTrackingPage() {
     try {
       setLoading(true);
       setError(null);
+      
+      console.log('Connecting to RPC URL:', RPC_URL);
+      console.log('Contract Address:', CONTRACT_ADDRESS);
       
       // Connect to blockchain
       const provider = new ethers.JsonRpcProvider(RPC_URL);
