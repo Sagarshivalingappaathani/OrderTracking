@@ -4,24 +4,17 @@ import { ethers } from 'ethers';
 // Contract ABI from JSON file
 export const CONTRACT_ABI = OrderTrackerABI.abi;
 
-// Local Hardhat network configuration
-export const RPC_URL = "http://127.0.0.1:8545";
+// VS Code port forwarding URL (now public)
+export const RPC_URL = "https://0982btxq-8545.inc1.devtunnels.ms/";
 
-// Contract address from environment variable
-export const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_CONTRACT_ADDRESS;
+// Contract address (hardcoded for hackathon)
+export const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
-// Development environment check for environment variables
+// Development environment check
 if (process.env.NODE_ENV === 'development') {
-  console.log('Environment Variables Status:');
-  console.log('CONTRACT_ADDRESS:', CONTRACT_ADDRESS ? '✅ Set' : '❌ Not Set');
-  console.log('Using local Hardhat network:', RPC_URL);
-}
-
-// Validation function to ensure required environment variables are set
-export function validateConfig() {
-  if (!process.env.NEXT_PUBLIC_CONTRACT_ADDRESS) {
-    throw new Error('CONTRACT_ADDRESS environment variable is not set');
-  }
+  console.log('Blockchain Configuration:');
+  console.log('CONTRACT_ADDRESS:', CONTRACT_ADDRESS);
+  console.log('RPC_URL:', RPC_URL);
 }
 
 // Helper function to get provider
@@ -32,7 +25,7 @@ export async function getProvider() {
     await provider.getNetwork();
     return provider;
   } catch (error) {
-    console.error('Failed to connect to local Hardhat network:', error);
-    throw new Error('Failed to connect to local Hardhat network. Make sure it is running with: npx hardhat node');
+    console.error('Failed to connect to blockchain network:', error);
+    throw new Error('Failed to connect to blockchain network. Please check your connection.');
   }
 } 
