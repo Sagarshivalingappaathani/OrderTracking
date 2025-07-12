@@ -1,8 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { ethers } from 'ethers';
+
+// TypeScript JSX types
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      [elemName: string]: any;
+    }
+  }
+}
 
 // Contract configuration
 const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
@@ -310,7 +319,7 @@ export default function ProductTrackingPage() {
               <p className="text-gray-600 mb-4">
                 Complete ownership trail showing all transfers of this product:
               </p>
-              {product.ownershipHistory.map((owner, index) => (
+              {product.ownershipHistory.map((owner: string, index: number) => (
                 <div key={index} className="flex items-center space-x-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border-l-4 border-blue-500">
                   <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
                     <span className="text-blue-600 font-bold">{index + 1}</span>
@@ -359,7 +368,7 @@ export default function ProductTrackingPage() {
                 <strong>This is a manufactured product</strong> created from the following source materials:
               </p>
               <div className="grid gap-4">
-                {product.components.map((component, index) => (
+                {product.components.map((component: Component, index: number) => (
                   <div key={index} className="bg-white p-4 rounded-lg border border-orange-200">
                     <div className="flex justify-between items-start">
                       <div>
