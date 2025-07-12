@@ -16,7 +16,7 @@ declare global {
 // Contract configuration
 const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
 
-// VS Code port forwarding URL
+// VS Code port forwarding URL (now public)
 const RPC_URL = "https://0982btxq-8545.inc1.devtunnels.ms/";
 
 // Contract ABI - TrustFlow contract functions
